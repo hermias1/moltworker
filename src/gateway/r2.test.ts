@@ -157,4 +157,28 @@ describe('mountR2Storage', () => {
       'R2 bucket mounted successfully - clawdbot data will persist across sessions'
     );
   });
+
+  it('clears directory and retries when mount fails due to non-empty directory', async () => {
+    const { sandbox, mountBucketMock } = createMockSandbox();
+    const startProcessMock = sandbox.startProcess as ReturnType<typeof vi.fn>;
+    
+    // First mount fails with "not empty", second succeeds
+    mountBucketMock
+      .mockRejectedValueOnce(new Error('S3FSMountError: S3FS mount failed: s3fs: MOUNTPOINT directory /data/clawdbot is not empty'))
+      .mockResolvedValueOnce(undefined);
+    
+    startProcessMock.mockResolvedValue({ status: 'completed' });
+    
+    const env = createEnv({
+      R2_ACCESS_KEY_ID: 'key123',
+      R2_SECRET_ACCESS_KEY: 'secret',
+      CF_ACCOUNT_ID: 'account123',
+    });
+
+    const result = await mountR2Storage(sandbox, env);
+
+    expect(result).toBe(true);
+    expect(startProcessMock).toHaveBeenCalledWith('rm -rf /data/clawdbot/*');
+    expect(mountBucketMock).toHaveBeenCalledTimes(2);
+  });
 });
