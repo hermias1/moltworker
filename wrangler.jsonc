@@ -72,7 +72,8 @@
   },
   // Note: CF_ACCOUNT_ID should be set via `wrangler secret put CF_ACCOUNT_ID`
   // Secrets to configure via `wrangler secret put`:
-  // - ANTHROPIC_API_KEY: Your Anthropic API key
+  // - NVIDIA_API_KEY: Your NVIDIA NIM API key (free at https://build.nvidia.com) — uses GLM-4.7
+  // - ANTHROPIC_API_KEY: Your Anthropic API key (alternative, paid)
   // - CF_ACCESS_TEAM_DOMAIN: Cloudflare Access team domain
   // - CF_ACCESS_AUD: Cloudflare Access application audience
   // - TELEGRAM_BOT_TOKEN: (optional) Telegram bot token

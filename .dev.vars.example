@@ -1,7 +1,13 @@
 # Copy this to .dev.vars and fill in your values
 # .dev.vars is gitignored and used by wrangler dev
 
-ANTHROPIC_API_KEY=sk-ant-...
+# === Option 1: NVIDIA NIM (free tier - recommended) ===
+# Sign up at https://build.nvidia.com and get an API key
+# Default model: GLM-4.7 (best open-weight coding model)
+NVIDIA_API_KEY=nvapi-...
+
+# === Option 2: Anthropic (paid) ===
+# ANTHROPIC_API_KEY=sk-ant-...
 
 # Local development mode - skips Cloudflare Access auth and bypasses device pairing
 # DEV_MODE=true

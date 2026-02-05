@@ -72,15 +72,16 @@ function validateRequiredEnv(env: MoltbotEnv): string[] {
     }
   }
 
-  // Check for AI Gateway or direct Anthropic configuration
-  if (env.AI_GATEWAY_API_KEY) {
+  // Check for AI provider configuration (NVIDIA NIM, AI Gateway, or direct Anthropic)
+  if (env.NVIDIA_API_KEY) {
+    // NVIDIA NIM: auto-configures base URL, no other vars needed
+  } else if (env.AI_GATEWAY_API_KEY) {
     // AI Gateway requires both API key and base URL
     if (!env.AI_GATEWAY_BASE_URL) {
       missing.push('AI_GATEWAY_BASE_URL (required when using AI_GATEWAY_API_KEY)');
     }
-  } else if (!env.ANTHROPIC_API_KEY) {
-    // Direct Anthropic access requires API key
-    missing.push('ANTHROPIC_API_KEY or AI_GATEWAY_API_KEY');
+  } else if (!env.ANTHROPIC_API_KEY && !env.OPENAI_API_KEY) {
+    missing.push('NVIDIA_API_KEY, ANTHROPIC_API_KEY, or AI_GATEWAY_API_KEY');
   }
 
   return missing;

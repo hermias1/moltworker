@@ -222,14 +222,40 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
     config.channels.slack.enabled = true;
 }
 
-// Base URL override (e.g., for Cloudflare AI Gateway)
+// Base URL override (e.g., for Cloudflare AI Gateway or NVIDIA NIM)
 // Usage: Set AI_GATEWAY_BASE_URL or ANTHROPIC_BASE_URL to your endpoint like:
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/anthropic
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openai
+//   https://integrate.api.nvidia.com/v1  (NVIDIA NIM)
 const baseUrl = (process.env.AI_GATEWAY_BASE_URL || process.env.ANTHROPIC_BASE_URL || '').replace(/\/+$/, '');
 const isOpenAI = baseUrl.endsWith('/openai');
+const isNvidia = baseUrl.includes('api.nvidia.com');
 
-if (isOpenAI) {
+if (isNvidia) {
+    // NVIDIA NIM configuration (OpenAI-compatible API)
+    // Default model: GLM-4.7 (best open-weight coding model)
+    // Fallbacks: MiniMax-M2.1, DeepSeek-V3.2, Nemotron-Super-49B
+    console.log('Configuring NVIDIA NIM provider with base URL:', baseUrl);
+    config.models = config.models || {};
+    config.models.providers = config.models.providers || {};
+    config.models.providers.openai = {
+        baseUrl: baseUrl,
+        api: 'openai-chat',
+        models: [
+            { id: 'zai/glm-4.7', name: 'GLM-4.7', contextWindow: 200000 },
+            { id: 'minimaxai/minimax-m2.1', name: 'MiniMax-M2.1', contextWindow: 128000 },
+            { id: 'deepseek-ai/deepseek-v3-2', name: 'DeepSeek-V3.2', contextWindow: 128000 },
+            { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', name: 'Nemotron-Super-49B', contextWindow: 128000 },
+        ]
+    };
+    // Add models to the allowlist so they appear in /models
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['openai/zai/glm-4.7'] = { alias: 'GLM-4.7' };
+    config.agents.defaults.models['openai/minimaxai/minimax-m2.1'] = { alias: 'MiniMax-M2.1' };
+    config.agents.defaults.models['openai/deepseek-ai/deepseek-v3-2'] = { alias: 'DeepSeek-V3.2' };
+    config.agents.defaults.models['openai/nvidia/llama-3.3-nemotron-super-49b-v1'] = { alias: 'Nemotron-49B' };
+    config.agents.defaults.model.primary = 'openai/zai/glm-4.7';
+} else if (isOpenAI) {
     // Create custom openai provider config with baseUrl override
     // Omit apiKey so moltbot falls back to OPENAI_API_KEY env var
     console.log('Configuring OpenAI provider with base URL:', baseUrl);
@@ -275,7 +301,8 @@ if (isOpenAI) {
     config.agents.defaults.models['anthropic/claude-haiku-4-5-20251001'] = { alias: 'Haiku 4.5' };
     config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5-20251101';
 } else {
-    // Default to Anthropic without custom base URL (uses built-in pi-ai catalog)
+    // Default to NVIDIA NIM with GLM-4.7 (free tier)
+    // Set NVIDIA_API_KEY to use this default, or override with AI_GATEWAY_BASE_URL
     config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
 }
 

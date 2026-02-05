@@ -170,4 +170,48 @@ describe('buildEnvVars', () => {
     expect(result.OPENAI_BASE_URL).toBe('https://gateway.ai.cloudflare.com/v1/123/my-gw/openai');
     expect(result.AI_GATEWAY_BASE_URL).toBe('https://gateway.ai.cloudflare.com/v1/123/my-gw/openai');
   });
+
+  // NVIDIA NIM tests
+  it('maps NVIDIA_API_KEY to OPENAI_API_KEY with auto base URL', () => {
+    const env = createMockEnv({
+      NVIDIA_API_KEY: 'nvapi-test-key',
+    });
+    const result = buildEnvVars(env);
+    expect(result.OPENAI_API_KEY).toBe('nvapi-test-key');
+    expect(result.OPENAI_BASE_URL).toBe('https://integrate.api.nvidia.com/v1');
+    expect(result.AI_GATEWAY_BASE_URL).toBe('https://integrate.api.nvidia.com/v1');
+    expect(result.ANTHROPIC_API_KEY).toBeUndefined();
+  });
+
+  it('NVIDIA_API_KEY uses custom base URL when AI_GATEWAY_BASE_URL is set', () => {
+    const env = createMockEnv({
+      NVIDIA_API_KEY: 'nvapi-test-key',
+      AI_GATEWAY_BASE_URL: 'https://integrate.api.nvidia.com/v1',
+    });
+    const result = buildEnvVars(env);
+    expect(result.OPENAI_API_KEY).toBe('nvapi-test-key');
+    expect(result.OPENAI_BASE_URL).toBe('https://integrate.api.nvidia.com/v1');
+    expect(result.AI_GATEWAY_BASE_URL).toBe('https://integrate.api.nvidia.com/v1');
+  });
+
+  it('NVIDIA_API_KEY takes precedence over AI_GATEWAY_API_KEY', () => {
+    const env = createMockEnv({
+      NVIDIA_API_KEY: 'nvapi-key',
+      AI_GATEWAY_API_KEY: 'gateway-key',
+      AI_GATEWAY_BASE_URL: 'https://integrate.api.nvidia.com/v1',
+    });
+    const result = buildEnvVars(env);
+    expect(result.OPENAI_API_KEY).toBe('nvapi-key');
+  });
+
+  it('detects NVIDIA NIM URL in AI_GATEWAY_BASE_URL without NVIDIA_API_KEY', () => {
+    const env = createMockEnv({
+      AI_GATEWAY_API_KEY: 'nvapi-via-gateway',
+      AI_GATEWAY_BASE_URL: 'https://integrate.api.nvidia.com/v1',
+    });
+    const result = buildEnvVars(env);
+    expect(result.OPENAI_API_KEY).toBe('nvapi-via-gateway');
+    expect(result.OPENAI_BASE_URL).toBe('https://integrate.api.nvidia.com/v1');
+    expect(result.ANTHROPIC_API_KEY).toBeUndefined();
+  });
 });
