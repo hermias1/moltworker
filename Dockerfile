@@ -18,7 +18,7 @@ RUN ARCH="$(dpkg --print-architecture)" \
     ffmpeg sox libsox-fmt-all \
     gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
     git vim nano htop strace \
-    curl wget jq unzip zip \
+    curl wget jq unzip zip lsof \
     gh \
     build-essential libffi-dev libssl-dev \
     imagemagick poppler-utils tesseract-ocr \

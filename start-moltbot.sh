@@ -8,11 +8,16 @@
 
 set -e
 
-# Check if clawdbot gateway is already running - bail early if so
-# Note: CLI is still named "clawdbot" until upstream renames it
+# Kill any existing clawdbot gateway before starting a new one
+# This ensures clean restarts when the container image is updated
 if pgrep -f "clawdbot gateway" > /dev/null 2>&1; then
-    echo "Moltbot gateway is already running, exiting."
-    exit 0
+    echo "Found existing gateway process, killing it..."
+    pkill -f "clawdbot gateway" 2>/dev/null || true
+    sleep 2
+    # Force kill if still running
+    pkill -9 -f "clawdbot gateway" 2>/dev/null || true
+    sleep 1
+    echo "Old gateway killed."
 fi
 
 # Paths (clawdbot paths are used internally - upstream hasn't renamed yet)
