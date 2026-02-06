@@ -10,15 +10,54 @@ RUN ARCH="$(dpkg --print-architecture)" \
          arm64) NODE_ARCH="arm64" ;; \
          *) echo "Unsupported architecture: ${ARCH}" >&2; exit 1 ;; \
        esac \
-    && apt-get update && apt-get install -y xz-utils ca-certificates rsync \
+    && apt-get update && apt-get install -y software-properties-common \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y \
+    xz-utils ca-certificates rsync \
+    python3.13 python3.13-venv python3.13-dev \
+    ffmpeg sox libsox-fmt-all \
+    gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
+    git vim nano htop strace \
+    curl wget jq unzip zip \
+    gh \
+    build-essential libffi-dev libssl-dev \
+    imagemagick poppler-utils tesseract-ocr \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 1 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.13 1 \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.13 \
     && curl -fsSLk https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz -o /tmp/node.tar.xz \
     && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
     && rm /tmp/node.tar.xz \
     && node --version \
     && npm --version
 
-# Install pnpm globally
-RUN npm install -g pnpm
+# Install Python packages (AI, audio, web, media, cloud, dev tools)
+RUN pip install --no-cache-dir \
+    # AI providers
+    nvidia-riva-client openai anthropic \
+    huggingface_hub transformers datasets \
+    replicate modal \
+    # Audio processing
+    pydub librosa soundfile \
+    # Web / HTTP / scraping
+    httpx requests beautifulsoup4 lxml \
+    websockets aiohttp playwright \
+    # Media
+    yt-dlp Pillow pytesseract \
+    # Email
+    sendgrid \
+    # Notebooks
+    jupyter papermill nbconvert ipykernel \
+    # Cloud CLIs
+    awscli \
+    # Utils
+    python-dotenv psutil rich pyyaml markdown gitpython
+
+# Install Playwright browsers for web automation
+RUN playwright install chromium && playwright install-deps chromium
+
+# Install Node.js global packages (pnpm, wrangler for Cloudflare deploys)
+RUN npm install -g pnpm wrangler vercel
 
 # Install moltbot (CLI is still named clawdbot until upstream renames)
 # Pin to specific version for reproducible builds

@@ -204,6 +204,16 @@ describe('buildEnvVars', () => {
     expect(result.OPENAI_API_KEY).toBe('nvapi-key');
   });
 
+  it('does not pass ANTHROPIC_API_KEY when NVIDIA_API_KEY is set', () => {
+    const env = createMockEnv({
+      NVIDIA_API_KEY: 'nvapi-test-key',
+      ANTHROPIC_API_KEY: 'sk-ant-placeholder',
+    });
+    const result = buildEnvVars(env);
+    expect(result.OPENAI_API_KEY).toBe('nvapi-test-key');
+    expect(result.ANTHROPIC_API_KEY).toBeUndefined();
+  });
+
   it('detects NVIDIA NIM URL in AI_GATEWAY_BASE_URL without NVIDIA_API_KEY', () => {
     const env = createMockEnv({
       AI_GATEWAY_API_KEY: 'nvapi-via-gateway',

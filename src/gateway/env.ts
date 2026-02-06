@@ -33,8 +33,9 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
     }
   }
 
-  // Fall back to direct provider keys
-  if (!envVars.ANTHROPIC_API_KEY && env.ANTHROPIC_API_KEY) {
+  // Fall back to direct provider keys (skip ANTHROPIC when NVIDIA is primary provider
+  // to avoid clawdbot trying to init a broken Anthropic provider alongside OpenAI)
+  if (!envVars.ANTHROPIC_API_KEY && env.ANTHROPIC_API_KEY && !env.NVIDIA_API_KEY) {
     envVars.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
   }
   if (!envVars.OPENAI_API_KEY && env.OPENAI_API_KEY) {
@@ -65,6 +66,27 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.SLACK_APP_TOKEN) envVars.SLACK_APP_TOKEN = env.SLACK_APP_TOKEN;
   if (env.CDP_SECRET) envVars.CDP_SECRET = env.CDP_SECRET;
   if (env.WORKER_URL) envVars.WORKER_URL = env.WORKER_URL;
+
+  // ElevenLabs TTS (Text-to-Speech)
+  if (env.ELEVENLABS_API_KEY) envVars.ELEVENLABS_API_KEY = env.ELEVENLABS_API_KEY;
+  if (env.ELEVENLABS_VOICE_ID) envVars.ELEVENLABS_VOICE_ID = env.ELEVENLABS_VOICE_ID;
+  if (env.ELEVENLABS_MODEL_ID) envVars.ELEVENLABS_MODEL_ID = env.ELEVENLABS_MODEL_ID;
+  if (env.TTS_AUTO_MODE) envVars.TTS_AUTO_MODE = env.TTS_AUTO_MODE;
+
+  // SendGrid email
+  if (env.SENDGRID_API_KEY) envVars.SENDGRID_API_KEY = env.SENDGRID_API_KEY;
+
+  // GitHub token for self-improvement (push to repo)
+  if (env.GITHUB_TOKEN) {
+    envVars.GITHUB_TOKEN = env.GITHUB_TOKEN;
+    envVars.GH_TOKEN = env.GITHUB_TOKEN; // gh CLI uses GH_TOKEN
+  }
+
+  // Hugging Face token
+  if (env.HF_TOKEN) envVars.HF_TOKEN = env.HF_TOKEN;
+
+  // Cloudflare API token (for wrangler deploy from container)
+  if (env.CLOUDFLARE_API_TOKEN) envVars.CLOUDFLARE_API_TOKEN = env.CLOUDFLARE_API_TOKEN;
 
   return envVars;
 }

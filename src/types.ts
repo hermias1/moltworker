@@ -41,6 +41,19 @@ export interface MoltbotEnv {
   BROWSER?: Fetcher;
   CDP_SECRET?: string; // Shared secret for CDP endpoint authentication
   WORKER_URL?: string; // Public URL of the worker (for CDP endpoint)
+  // ElevenLabs TTS (Text-to-Speech)
+  ELEVENLABS_API_KEY?: string;
+  ELEVENLABS_VOICE_ID?: string; // Voice ID from ElevenLabs (default: Aria)
+  ELEVENLABS_MODEL_ID?: string; // Model ID (default: eleven_multilingual_v2)
+  TTS_AUTO_MODE?: string; // 'always', 'inbound', 'tagged', 'off' (default: inbound)
+  // SendGrid email
+  SENDGRID_API_KEY?: string;
+  // GitHub token for self-improvement
+  GITHUB_TOKEN?: string;
+  // Hugging Face token
+  HF_TOKEN?: string;
+  // Cloudflare API token (for wrangler deploy from container)
+  CLOUDFLARE_API_TOKEN?: string;
 }
 
 /**

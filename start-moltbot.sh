@@ -222,6 +222,41 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
     config.channels.slack.enabled = true;
 }
 
+// ElevenLabs TTS configuration (Text-to-Speech)
+if (process.env.ELEVENLABS_API_KEY) {
+    console.log('Configuring ElevenLabs TTS...');
+    config.messages = config.messages || {};
+    config.messages.tts = {
+        auto: process.env.TTS_AUTO_MODE || 'inbound',  // 'always', 'inbound', 'tagged', 'off'
+        provider: 'elevenlabs',
+        elevenlabs: {
+            apiKey: process.env.ELEVENLABS_API_KEY,
+            voiceId: process.env.ELEVENLABS_VOICE_ID || 'pMsXgVXv3BLzUgSXRplE',  // Default: Aria
+            modelId: process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2',
+            voiceSettings: {
+                stability: 0.5,
+                similarityBoost: 0.75,
+                style: 0.0,
+                useSpeakerBoost: true,
+                speed: 1.0
+            }
+        }
+    };
+}
+
+// NVIDIA Whisper STT configuration (Speech-to-Text)
+// Note: Uses the NVIDIA_API_KEY already set for the LLM
+if (process.env.NVIDIA_API_KEY) {
+    console.log('Configuring NVIDIA Whisper STT...');
+    config.messages = config.messages || {};
+    config.messages.stt = config.messages.stt || {};
+    config.messages.stt.provider = 'nvidia';
+    config.messages.stt.nvidia = {
+        apiKey: process.env.NVIDIA_API_KEY,
+        model: 'nvidia/parakeet-ctc-1.1b-asr'  // Fast ASR model
+    };
+}
+
 // Base URL override (e.g., for Cloudflare AI Gateway or NVIDIA NIM)
 // Usage: Set AI_GATEWAY_BASE_URL or ANTHROPIC_BASE_URL to your endpoint like:
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/anthropic
@@ -240,9 +275,9 @@ if (isNvidia) {
     config.models.providers = config.models.providers || {};
     config.models.providers.openai = {
         baseUrl: baseUrl,
-        api: 'openai-chat',
+        api: 'openai-completions',
         models: [
-            { id: 'zai/glm-4.7', name: 'GLM-4.7', contextWindow: 200000 },
+            { id: 'z-ai/glm4.7', name: 'GLM-4.7', contextWindow: 200000 },
             { id: 'minimaxai/minimax-m2.1', name: 'MiniMax-M2.1', contextWindow: 128000 },
             { id: 'deepseek-ai/deepseek-v3-2', name: 'DeepSeek-V3.2', contextWindow: 128000 },
             { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', name: 'Nemotron-Super-49B', contextWindow: 128000 },
@@ -250,11 +285,11 @@ if (isNvidia) {
     };
     // Add models to the allowlist so they appear in /models
     config.agents.defaults.models = config.agents.defaults.models || {};
-    config.agents.defaults.models['openai/zai/glm-4.7'] = { alias: 'GLM-4.7' };
+    config.agents.defaults.models['openai/z-ai/glm4.7'] = { alias: 'GLM-4.7' };
     config.agents.defaults.models['openai/minimaxai/minimax-m2.1'] = { alias: 'MiniMax-M2.1' };
     config.agents.defaults.models['openai/deepseek-ai/deepseek-v3-2'] = { alias: 'DeepSeek-V3.2' };
     config.agents.defaults.models['openai/nvidia/llama-3.3-nemotron-super-49b-v1'] = { alias: 'Nemotron-49B' };
-    config.agents.defaults.model.primary = 'openai/zai/glm-4.7';
+    config.agents.defaults.model.primary = 'openai/z-ai/glm4.7';
 } else if (isOpenAI) {
     // Create custom openai provider config with baseUrl override
     // Omit apiKey so moltbot falls back to OPENAI_API_KEY env var
