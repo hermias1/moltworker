@@ -29,7 +29,8 @@ RUN ARCH="$(dpkg --print-architecture)" \
     && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
     && rm /tmp/node.tar.xz \
     && node --version \
-    && npm --version
+    && npm --version \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
 
 # Install Python packages (AI, audio, web, media, cloud, dev tools)
 RUN pip install --no-cache-dir \
@@ -43,19 +44,20 @@ RUN pip install --no-cache-dir \
     sendgrid \
     jupyter papermill nbconvert ipykernel \
     awscli \
-    python-dotenv psutil rich pyyaml markdown gitpython
+    python-dotenv psutil rich pyyaml markdown gitpython \
+    && rm -rf /root/.cache/pip
 
 # Install Playwright browsers for web automation
-RUN playwright install chromium && playwright install-deps chromium
+RUN playwright install chromium && playwright install-deps chromium \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js global packages (pnpm, wrangler for Cloudflare deploys)
-RUN npm install -g pnpm wrangler vercel
-
-# Install moltbot (CLI is still named clawdbot until upstream renames)
-# Pin to specific version for reproducible builds
-RUN npm install -g clawdbot@2026.1.24-3 \
+# Install Node.js global packages + clawdbot, clean npm cache to save disk
+RUN npm install -g pnpm wrangler vercel \
+    && npm install -g clawdbot@2026.1.24-3 \
     && clawdbot --version \
-    && find /usr/local/lib/node_modules/clawdbot -name "*.sh" -exec chmod +x {} \;
+    && find /usr/local/lib/node_modules/clawdbot -name "*.sh" -exec chmod +x {} \; \
+    && npm cache clean --force \
+    && rm -rf /root/.npm /tmp/*
 
 # Create moltbot directories (paths still use clawdbot until upstream renames)
 # Templates are stored in /root/.clawdbot-templates for initialization
