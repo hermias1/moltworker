@@ -237,10 +237,10 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
     config.channels.slack.enabled = true;
 }
 
-// TTS configuration: ElevenLabs primary + Edge TTS fallback (free)
+// TTS configuration: ElevenLabs
 config.messages = config.messages || {};
 if (process.env.ELEVENLABS_API_KEY) {
-    console.log('Configuring ElevenLabs TTS (primary) + Edge TTS (fallback)...');
+    console.log('Configuring ElevenLabs TTS...');
     config.messages.tts = {
         auto: process.env.TTS_AUTO_MODE || 'inbound',
         provider: 'elevenlabs',
@@ -255,21 +255,6 @@ if (process.env.ELEVENLABS_API_KEY) {
                 useSpeakerBoost: true,
                 speed: 1.0
             }
-        },
-        edge: {
-            voice: 'fr-FR-DeniseNeural',
-            outputFormat: 'audio-24khz-48kbitrate-mono-mp3'
-        },
-        fallback: 'edge'
-    };
-} else {
-    console.log('Configuring Edge TTS (free, no API key needed)...');
-    config.messages.tts = {
-        auto: process.env.TTS_AUTO_MODE || 'inbound',
-        provider: 'edge',
-        edge: {
-            voice: 'fr-FR-DeniseNeural',
-            outputFormat: 'audio-24khz-48kbitrate-mono-mp3'
         }
     };
 }
@@ -283,7 +268,7 @@ if (process.env.NVIDIA_API_KEY) {
     config.messages.stt.provider = 'nvidia';
     config.messages.stt.nvidia = {
         apiKey: process.env.NVIDIA_API_KEY,
-        model: 'openai/whisper-large-v3'
+        model: 'nvidia/parakeet-ctc-1.1b-asr'
     };
 }
 
@@ -335,9 +320,6 @@ if (isNvidia) {
     config.agents.defaults.models['openai/qwen/qwen3-235b-a22b'] = { alias: 'Qwen3-235B' };
     // Primary: Mistral-Nemotron (built for agentic workflows, best tool calling)
     config.agents.defaults.model.primary = 'openai/mistralai/mistral-nemotron';
-    // Heartbeat: Nemotron-3-Nano (3.5B active params, 1M context, fast + good tool calling)
-    config.agents.defaults.heartbeat = config.agents.defaults.heartbeat || {};
-    config.agents.defaults.heartbeat.model = 'openai/nvidia/nemotron-3-nano-30b-a3b';
 } else if (isOpenAI) {
     // Create custom openai provider config with baseUrl override
     // Omit apiKey so moltbot falls back to OPENAI_API_KEY env var
