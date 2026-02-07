@@ -33,24 +33,16 @@ RUN ARCH="$(dpkg --print-architecture)" \
 
 # Install Python packages (AI, audio, web, media, cloud, dev tools)
 RUN pip install --no-cache-dir \
-    # AI providers
     nvidia-riva-client openai anthropic \
     huggingface_hub transformers datasets \
     replicate modal \
-    # Audio processing
     pydub librosa soundfile \
-    # Web / HTTP / scraping
     httpx requests beautifulsoup4 lxml \
     websockets aiohttp playwright \
-    # Media
     yt-dlp Pillow pytesseract \
-    # Email
     sendgrid \
-    # Notebooks
     jupyter papermill nbconvert ipykernel \
-    # Cloud CLIs
     awscli \
-    # Utils
     python-dotenv psutil rich pyyaml markdown gitpython
 
 # Install Playwright browsers for web automation
@@ -62,7 +54,8 @@ RUN npm install -g pnpm wrangler vercel
 # Install moltbot (CLI is still named clawdbot until upstream renames)
 # Pin to specific version for reproducible builds
 RUN npm install -g clawdbot@2026.1.24-3 \
-    && clawdbot --version
+    && clawdbot --version \
+    && find /usr/local/lib/node_modules/clawdbot -name "*.sh" -exec chmod +x {} \;
 
 # Create moltbot directories (paths still use clawdbot until upstream renames)
 # Templates are stored in /root/.clawdbot-templates for initialization

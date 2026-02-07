@@ -10,14 +10,24 @@ set -e
 
 # Kill any existing clawdbot gateway before starting a new one
 # This ensures clean restarts when the container image is updated
-if pgrep -f "clawdbot gateway" > /dev/null 2>&1; then
+# Note: process name can be "clawdbot gateway" or "clawdbot-gateway", regex dot matches both
+if pgrep -f "clawdbot.gateway" > /dev/null 2>&1; then
     echo "Found existing gateway process, killing it..."
-    pkill -f "clawdbot gateway" 2>/dev/null || true
+    pkill -f "clawdbot.gateway" 2>/dev/null || true
     sleep 2
-    # Force kill if still running
-    pkill -9 -f "clawdbot gateway" 2>/dev/null || true
+    pkill -9 -f "clawdbot.gateway" 2>/dev/null || true
     sleep 1
     echo "Old gateway killed."
+fi
+
+# Also kill anything holding port 18789 (catches orphaned processes)
+if command -v lsof > /dev/null 2>&1; then
+    PORT_PIDS=$(lsof -ti :18789 2>/dev/null || true)
+    if [ -n "$PORT_PIDS" ]; then
+        echo "Killing processes on port 18789: $PORT_PIDS"
+        echo "$PORT_PIDS" | xargs kill -9 2>/dev/null || true
+        sleep 1
+    fi
 fi
 
 # Paths (clawdbot paths are used internally - upstream hasn't renamed yet)
@@ -227,16 +237,16 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
     config.channels.slack.enabled = true;
 }
 
-// ElevenLabs TTS configuration (Text-to-Speech)
+// TTS configuration: ElevenLabs primary + Edge TTS fallback (free)
+config.messages = config.messages || {};
 if (process.env.ELEVENLABS_API_KEY) {
-    console.log('Configuring ElevenLabs TTS...');
-    config.messages = config.messages || {};
+    console.log('Configuring ElevenLabs TTS (primary) + Edge TTS (fallback)...');
     config.messages.tts = {
-        auto: process.env.TTS_AUTO_MODE || 'inbound',  // 'always', 'inbound', 'tagged', 'off'
+        auto: process.env.TTS_AUTO_MODE || 'inbound',
         provider: 'elevenlabs',
         elevenlabs: {
             apiKey: process.env.ELEVENLABS_API_KEY,
-            voiceId: process.env.ELEVENLABS_VOICE_ID || 'pMsXgVXv3BLzUgSXRplE',  // Default: Aria
+            voiceId: process.env.ELEVENLABS_VOICE_ID || 'pMsXgVXv3BLzUgSXRplE',
             modelId: process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2',
             voiceSettings: {
                 stability: 0.5,
@@ -245,12 +255,27 @@ if (process.env.ELEVENLABS_API_KEY) {
                 useSpeakerBoost: true,
                 speed: 1.0
             }
+        },
+        edge: {
+            voice: 'fr-FR-DeniseNeural',
+            outputFormat: 'audio-24khz-48kbitrate-mono-mp3'
+        },
+        fallback: 'edge'
+    };
+} else {
+    console.log('Configuring Edge TTS (free, no API key needed)...');
+    config.messages.tts = {
+        auto: process.env.TTS_AUTO_MODE || 'inbound',
+        provider: 'edge',
+        edge: {
+            voice: 'fr-FR-DeniseNeural',
+            outputFormat: 'audio-24khz-48kbitrate-mono-mp3'
         }
     };
 }
 
-// NVIDIA Whisper STT configuration (Speech-to-Text)
-// Note: Uses the NVIDIA_API_KEY already set for the LLM
+// NVIDIA STT configuration (Speech-to-Text)
+// Whisper Large V3 for best multilingual accuracy (French + English)
 if (process.env.NVIDIA_API_KEY) {
     console.log('Configuring NVIDIA Whisper STT...');
     config.messages = config.messages || {};
@@ -258,7 +283,7 @@ if (process.env.NVIDIA_API_KEY) {
     config.messages.stt.provider = 'nvidia';
     config.messages.stt.nvidia = {
         apiKey: process.env.NVIDIA_API_KEY,
-        model: 'nvidia/parakeet-ctc-1.1b-asr'  // Fast ASR model
+        model: 'openai/whisper-large-v3'
     };
 }
 
@@ -273,8 +298,8 @@ const isNvidia = baseUrl.includes('api.nvidia.com');
 
 if (isNvidia) {
     // NVIDIA NIM configuration (OpenAI-compatible API)
-    // Default model: GLM-4.7 (best open-weight coding model)
-    // Fallbacks: MiniMax-M2.1, DeepSeek-V3.2, Nemotron-Super-49B
+    // Default: DeepSeek-V3.2 (fast, powerful 685B reasoning)
+    // GLM-4.7 available but slow (thinking mode enabled by default)
     console.log('Configuring NVIDIA NIM provider with base URL:', baseUrl);
     config.models = config.models || {};
     config.models.providers = config.models.providers || {};
@@ -282,19 +307,37 @@ if (isNvidia) {
         baseUrl: baseUrl,
         api: 'openai-completions',
         models: [
+            { id: 'deepseek-ai/deepseek-v3-2', name: 'DeepSeek-V3.2', contextWindow: 128000 },
             { id: 'z-ai/glm4.7', name: 'GLM-4.7', contextWindow: 200000 },
             { id: 'minimaxai/minimax-m2.1', name: 'MiniMax-M2.1', contextWindow: 128000 },
-            { id: 'deepseek-ai/deepseek-v3-2', name: 'DeepSeek-V3.2', contextWindow: 128000 },
-            { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', name: 'Nemotron-Super-49B', contextWindow: 128000 },
+            { id: 'nvidia/llama-3.3-nemotron-super-49b-v1.5', name: 'Nemotron-Super-49B-v1.5', contextWindow: 128000 },
+            { id: 'mistralai/mistral-large-3-675b-instruct-2512', name: 'Mistral-Large-3', contextWindow: 128000 },
+            { id: 'mistralai/devstral-2-123b-instruct-2512', name: 'Devstral-2-123B', contextWindow: 256000 },
+            { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi-K2', contextWindow: 256000 },
+            { id: 'deepseek-ai/deepseek-v3.1', name: 'DeepSeek-V3.1', contextWindow: 128000 },
+            { id: 'nvidia/llama-3.1-nemotron-nano-8b-v1', name: 'Nemotron-Nano-8B', contextWindow: 128000 },
+            { id: 'mistralai/mistral-small-24b-instruct', name: 'Mistral-Small-24B', contextWindow: 32000 },
+            { id: 'qwen/qwen3-235b-a22b', name: 'Qwen3-235B', contextWindow: 128000 },
         ]
     };
     // Add models to the allowlist so they appear in /models
     config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['openai/deepseek-ai/deepseek-v3-2'] = { alias: 'DeepSeek-V3.2' };
     config.agents.defaults.models['openai/z-ai/glm4.7'] = { alias: 'GLM-4.7' };
     config.agents.defaults.models['openai/minimaxai/minimax-m2.1'] = { alias: 'MiniMax-M2.1' };
-    config.agents.defaults.models['openai/deepseek-ai/deepseek-v3-2'] = { alias: 'DeepSeek-V3.2' };
-    config.agents.defaults.models['openai/nvidia/llama-3.3-nemotron-super-49b-v1'] = { alias: 'Nemotron-49B' };
-    config.agents.defaults.model.primary = 'openai/z-ai/glm4.7';
+    config.agents.defaults.models['openai/nvidia/llama-3.3-nemotron-super-49b-v1.5'] = { alias: 'Nemotron-49B-v1.5' };
+    config.agents.defaults.models['openai/mistralai/mistral-large-3-675b-instruct-2512'] = { alias: 'Mistral-Large-3' };
+    config.agents.defaults.models['openai/mistralai/devstral-2-123b-instruct-2512'] = { alias: 'Devstral-2' };
+    config.agents.defaults.models['openai/moonshotai/kimi-k2-instruct-0905'] = { alias: 'Kimi-K2' };
+    config.agents.defaults.models['openai/deepseek-ai/deepseek-v3.1'] = { alias: 'DeepSeek-V3.1' };
+    config.agents.defaults.models['openai/nvidia/llama-3.1-nemotron-nano-8b-v1'] = { alias: 'Nemotron-Nano-8B' };
+    config.agents.defaults.models['openai/mistralai/mistral-small-24b-instruct'] = { alias: 'Mistral-Small' };
+    config.agents.defaults.models['openai/qwen/qwen3-235b-a22b'] = { alias: 'Qwen3-235B' };
+    // Primary: DeepSeek-V3.2 (fast, no thinking mode delay)
+    config.agents.defaults.model.primary = 'openai/deepseek-ai/deepseek-v3-2';
+    // Heartbeat: small fast model for periodic checks
+    config.agents.defaults.heartbeat = config.agents.defaults.heartbeat || {};
+    config.agents.defaults.heartbeat.model = 'openai/nvidia/llama-3.1-nemotron-nano-8b-v1';
 } else if (isOpenAI) {
     // Create custom openai provider config with baseUrl override
     // Omit apiKey so moltbot falls back to OPENAI_API_KEY env var
