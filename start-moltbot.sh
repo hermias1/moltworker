@@ -307,7 +307,9 @@ if (isNvidia) {
         baseUrl: baseUrl,
         api: 'openai-completions',
         models: [
+            { id: 'mistralai/mistral-nemotron', name: 'Mistral-Nemotron', contextWindow: 128000 },
             { id: 'deepseek-ai/deepseek-v3-2', name: 'DeepSeek-V3.2', contextWindow: 128000 },
+            { id: 'nvidia/nemotron-3-nano-30b-a3b', name: 'Nemotron-3-Nano', contextWindow: 1000000 },
             { id: 'z-ai/glm4.7', name: 'GLM-4.7', contextWindow: 200000 },
             { id: 'minimaxai/minimax-m2.1', name: 'MiniMax-M2.1', contextWindow: 128000 },
             { id: 'nvidia/llama-3.3-nemotron-super-49b-v1.5', name: 'Nemotron-Super-49B-v1.5', contextWindow: 128000 },
@@ -315,14 +317,14 @@ if (isNvidia) {
             { id: 'mistralai/devstral-2-123b-instruct-2512', name: 'Devstral-2-123B', contextWindow: 256000 },
             { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi-K2', contextWindow: 256000 },
             { id: 'deepseek-ai/deepseek-v3.1', name: 'DeepSeek-V3.1', contextWindow: 128000 },
-            { id: 'nvidia/llama-3.1-nemotron-nano-8b-v1', name: 'Nemotron-Nano-8B', contextWindow: 128000 },
-            { id: 'mistralai/mistral-small-24b-instruct', name: 'Mistral-Small-24B', contextWindow: 32000 },
             { id: 'qwen/qwen3-235b-a22b', name: 'Qwen3-235B', contextWindow: 128000 },
         ]
     };
     // Add models to the allowlist so they appear in /models
     config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['openai/mistralai/mistral-nemotron'] = { alias: 'Mistral-Nemotron' };
     config.agents.defaults.models['openai/deepseek-ai/deepseek-v3-2'] = { alias: 'DeepSeek-V3.2' };
+    config.agents.defaults.models['openai/nvidia/nemotron-3-nano-30b-a3b'] = { alias: 'Nemotron-3-Nano' };
     config.agents.defaults.models['openai/z-ai/glm4.7'] = { alias: 'GLM-4.7' };
     config.agents.defaults.models['openai/minimaxai/minimax-m2.1'] = { alias: 'MiniMax-M2.1' };
     config.agents.defaults.models['openai/nvidia/llama-3.3-nemotron-super-49b-v1.5'] = { alias: 'Nemotron-49B-v1.5' };
@@ -330,14 +332,12 @@ if (isNvidia) {
     config.agents.defaults.models['openai/mistralai/devstral-2-123b-instruct-2512'] = { alias: 'Devstral-2' };
     config.agents.defaults.models['openai/moonshotai/kimi-k2-instruct-0905'] = { alias: 'Kimi-K2' };
     config.agents.defaults.models['openai/deepseek-ai/deepseek-v3.1'] = { alias: 'DeepSeek-V3.1' };
-    config.agents.defaults.models['openai/nvidia/llama-3.1-nemotron-nano-8b-v1'] = { alias: 'Nemotron-Nano-8B' };
-    config.agents.defaults.models['openai/mistralai/mistral-small-24b-instruct'] = { alias: 'Mistral-Small' };
     config.agents.defaults.models['openai/qwen/qwen3-235b-a22b'] = { alias: 'Qwen3-235B' };
-    // Primary: DeepSeek-V3.2 (fast, no thinking mode delay)
-    config.agents.defaults.model.primary = 'openai/deepseek-ai/deepseek-v3-2';
-    // Heartbeat: small fast model for periodic checks
+    // Primary: Mistral-Nemotron (built for agentic workflows, best tool calling)
+    config.agents.defaults.model.primary = 'openai/mistralai/mistral-nemotron';
+    // Heartbeat: Nemotron-3-Nano (3.5B active params, 1M context, fast + good tool calling)
     config.agents.defaults.heartbeat = config.agents.defaults.heartbeat || {};
-    config.agents.defaults.heartbeat.model = 'openai/nvidia/llama-3.1-nemotron-nano-8b-v1';
+    config.agents.defaults.heartbeat.model = 'openai/nvidia/nemotron-3-nano-30b-a3b';
 } else if (isOpenAI) {
     // Create custom openai provider config with baseUrl override
     // Omit apiKey so moltbot falls back to OPENAI_API_KEY env var
