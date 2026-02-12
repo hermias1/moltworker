@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "moltbot-sandbox",
+  "name": "moltworker",
   "main": "src/index.ts",
   "compatibility_date": "2025-05-06",
   "compatibility_flags": ["nodejs_compat"],
@@ -37,7 +37,7 @@
     {
       "class_name": "Sandbox",
       "image": "./Dockerfile",
-      "instance_type": "standard-1",
+      "instance_type": "standard-4",
       "max_instances": 1,
     },
   ],
@@ -53,6 +53,14 @@
     {
       "new_sqlite_classes": ["Sandbox"],
       "tag": "v1",
+    },
+  ],
+  // Custom domain route
+  "routes": [
+    {
+      "pattern": "molt.colombani.ai",
+      "zone_name": "colombani.ai",
+      "custom_domain": true,
     },
   ],
   // R2 bucket for persistent storage (moltbot data, conversations, etc.)

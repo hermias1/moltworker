@@ -20,6 +20,13 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
     envVars.CF_AI_GATEWAY_GATEWAY_ID = env.CF_AI_GATEWAY_GATEWAY_ID;
   }
 
+  // NVIDIA NIM: map to OPENAI_API_KEY + OPENAI_BASE_URL for OpenAI-compatible access
+  if (env.NVIDIA_API_KEY) {
+    envVars.OPENAI_API_KEY = env.NVIDIA_API_KEY;
+    envVars.OPENAI_BASE_URL = 'https://integrate.api.nvidia.com/v1';
+    envVars.NVIDIA_API_KEY = env.NVIDIA_API_KEY;
+  }
+
   // Direct provider keys
   if (env.ANTHROPIC_API_KEY) envVars.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
   if (env.OPENAI_API_KEY) envVars.OPENAI_API_KEY = env.OPENAI_API_KEY;
@@ -46,6 +53,8 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.SLACK_BOT_TOKEN) envVars.SLACK_BOT_TOKEN = env.SLACK_BOT_TOKEN;
   if (env.SLACK_APP_TOKEN) envVars.SLACK_APP_TOKEN = env.SLACK_APP_TOKEN;
   if (env.CF_AI_GATEWAY_MODEL) envVars.CF_AI_GATEWAY_MODEL = env.CF_AI_GATEWAY_MODEL;
+  if (env.ELEVENLABS_API_KEY) envVars.ELEVENLABS_API_KEY = env.ELEVENLABS_API_KEY;
+  if (env.BRAVE_API_KEY) envVars.BRAVE_API_KEY = env.BRAVE_API_KEY;
   if (env.CF_ACCOUNT_ID) envVars.CF_ACCOUNT_ID = env.CF_ACCOUNT_ID;
   if (env.CDP_SECRET) envVars.CDP_SECRET = env.CDP_SECRET;
   if (env.WORKER_URL) envVars.WORKER_URL = env.WORKER_URL;

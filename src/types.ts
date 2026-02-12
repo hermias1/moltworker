@@ -19,6 +19,9 @@ export interface MoltbotEnv {
   ANTHROPIC_API_KEY?: string;
   ANTHROPIC_BASE_URL?: string;
   OPENAI_API_KEY?: string;
+  NVIDIA_API_KEY?: string; // NVIDIA NIM API key (nvapi-...)
+  ELEVENLABS_API_KEY?: string; // ElevenLabs TTS API key
+  BRAVE_API_KEY?: string; // Brave Search API key
   MOLTBOT_GATEWAY_TOKEN?: string; // Gateway token (mapped to OPENCLAW_GATEWAY_TOKEN for container)
   DEV_MODE?: string; // Set to 'true' for local dev (skips CF Access auth + openclaw device pairing)
   E2E_TEST_MODE?: string; // Set to 'true' for E2E tests (skips CF Access auth but keeps device pairing)

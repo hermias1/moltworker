@@ -6,6 +6,7 @@
 # 3. Patches config for features onboard doesn't cover (channels, gateway auth)
 # 4. Starts a background sync loop (rclone, watches for file changes)
 # 5. Starts the gateway
+# cache-bust: 2026-02-12-v5-models-merge
 
 set -e
 
@@ -102,30 +103,37 @@ fi
 # ONBOARD (only if no config exists yet)
 # ============================================================
 if [ ! -f "$CONFIG_FILE" ]; then
-    echo "No existing config found, running openclaw onboard..."
+    # NVIDIA NIM: skip onboard (validates against api.openai.com, fails with nvapi- keys)
+    if [ -n "$NVIDIA_API_KEY" ]; then
+        echo "NVIDIA NIM detected, creating base config (skipping onboard)..."
+        echo '{"gateway":{"port":18789,"mode":"local"}}' > "$CONFIG_FILE"
+        echo "Base config created"
+    else
+        echo "No existing config found, running openclaw onboard..."
 
-    AUTH_ARGS=""
-    if [ -n "$CLOUDFLARE_AI_GATEWAY_API_KEY" ] && [ -n "$CF_AI_GATEWAY_ACCOUNT_ID" ] && [ -n "$CF_AI_GATEWAY_GATEWAY_ID" ]; then
-        AUTH_ARGS="--auth-choice cloudflare-ai-gateway-api-key \
-            --cloudflare-ai-gateway-account-id $CF_AI_GATEWAY_ACCOUNT_ID \
-            --cloudflare-ai-gateway-gateway-id $CF_AI_GATEWAY_GATEWAY_ID \
-            --cloudflare-ai-gateway-api-key $CLOUDFLARE_AI_GATEWAY_API_KEY"
-    elif [ -n "$ANTHROPIC_API_KEY" ]; then
-        AUTH_ARGS="--auth-choice apiKey --anthropic-api-key $ANTHROPIC_API_KEY"
-    elif [ -n "$OPENAI_API_KEY" ]; then
-        AUTH_ARGS="--auth-choice openai-api-key --openai-api-key $OPENAI_API_KEY"
+        AUTH_ARGS=""
+        if [ -n "$CLOUDFLARE_AI_GATEWAY_API_KEY" ] && [ -n "$CF_AI_GATEWAY_ACCOUNT_ID" ] && [ -n "$CF_AI_GATEWAY_GATEWAY_ID" ]; then
+            AUTH_ARGS="--auth-choice cloudflare-ai-gateway-api-key \
+                --cloudflare-ai-gateway-account-id $CF_AI_GATEWAY_ACCOUNT_ID \
+                --cloudflare-ai-gateway-gateway-id $CF_AI_GATEWAY_GATEWAY_ID \
+                --cloudflare-ai-gateway-api-key $CLOUDFLARE_AI_GATEWAY_API_KEY"
+        elif [ -n "$ANTHROPIC_API_KEY" ]; then
+            AUTH_ARGS="--auth-choice apiKey --anthropic-api-key $ANTHROPIC_API_KEY"
+        elif [ -n "$OPENAI_API_KEY" ]; then
+            AUTH_ARGS="--auth-choice openai-api-key --openai-api-key $OPENAI_API_KEY"
+        fi
+
+        openclaw onboard --non-interactive --accept-risk \
+            --mode local \
+            $AUTH_ARGS \
+            --gateway-port 18789 \
+            --gateway-bind lan \
+            --skip-channels \
+            --skip-skills \
+            --skip-health
+
+        echo "Onboard completed"
     fi
-
-    openclaw onboard --non-interactive --accept-risk \
-        --mode local \
-        $AUTH_ARGS \
-        --gateway-port 18789 \
-        --gateway-bind lan \
-        --skip-channels \
-        --skip-skills \
-        --skip-health
-
-    echo "Onboard completed"
 else
     echo "Using existing config"
 fi
@@ -219,6 +227,52 @@ if (process.env.CF_AI_GATEWAY_MODEL) {
     }
 }
 
+// NVIDIA NIM (OPENAI_BASE_URL pointing to nvidia.com)
+// Skipped if CF_AI_GATEWAY_MODEL is set (AI Gateway takes precedence)
+if (!process.env.CF_AI_GATEWAY_MODEL && process.env.OPENAI_BASE_URL && process.env.OPENAI_BASE_URL.includes('nvidia.com')) {
+    const baseUrl = process.env.OPENAI_BASE_URL.replace(/\/+$/, '');
+    const apiKey = process.env.OPENAI_API_KEY || '';
+    config.models = config.models || {};
+    config.models.mode = 'merge';
+    config.models.providers = config.models.providers || {};
+    config.models.providers.nvidia = {
+        baseUrl: baseUrl,
+        apiKey: apiKey,
+        api: 'openai-completions',
+        models: [
+            { id: 'deepseek-ai/deepseek-v3.2', name: 'DeepSeek V3.2 (685B)', reasoning: false,
+              input: ['text'], contextWindow: 128000, maxTokens: 8192 },
+            { id: 'moonshotai/kimi-k2.5', name: 'Kimi K2.5 (1T MoE)', reasoning: false,
+              input: ['text'], contextWindow: 256000, maxTokens: 32768 },
+            { id: 'nvidia/nemotron-3-nano-30b-a3b', name: 'Nemotron Nano 30B (1M ctx)', reasoning: false,
+              input: ['text'], contextWindow: 1000000, maxTokens: 32768 },
+            { id: 'z-ai/glm4.7', name: 'GLM 4.7 (tool calling)', reasoning: false,
+              input: ['text'], contextWindow: 131072, maxTokens: 16384 },
+            { id: 'qwen/qwen3-next-80b-a3b-instruct', name: 'Qwen3 Next 80B', reasoning: false,
+              input: ['text'], contextWindow: 262144, maxTokens: 16384 },
+            { id: 'deepseek-ai/deepseek-v3.1-terminus', name: 'DeepSeek V3.1 Terminus (tool calling)', reasoning: false,
+              input: ['text'], contextWindow: 128000, maxTokens: 8192 },
+        ],
+    };
+    // Default to DeepSeek V3.2 — best overall quality
+    config.agents = config.agents || {};
+    config.agents.defaults = config.agents.defaults || {};
+    config.agents.defaults.model = { primary: 'nvidia/deepseek-ai/deepseek-v3.2' };
+    // Model allowlist (required for custom providers)
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['nvidia/deepseek-ai/deepseek-v3.2'] = {};
+    config.agents.defaults.models['nvidia/moonshotai/kimi-k2.5'] = {};
+    config.agents.defaults.models['nvidia/nvidia/nemotron-3-nano-30b-a3b'] = {};
+    config.agents.defaults.models['nvidia/z-ai/glm4.7'] = {};
+    config.agents.defaults.models['nvidia/qwen/qwen3-next-80b-a3b-instruct'] = {};
+    config.agents.defaults.models['nvidia/deepseek-ai/deepseek-v3.1-terminus'] = {};
+
+    // Disable compaction — NVIDIA NIM hangs on summarization calls (openclaw#5980)
+    delete config.agents.defaults.compaction;
+
+    console.log('NVIDIA NIM provider configured with', 6, 'models via', baseUrl);
+}
+
 // Telegram configuration
 // Overwrite entire channel object to drop stale keys from old R2 backups
 // that would fail OpenClaw's strict config validation (see #47)
@@ -259,6 +313,51 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
         enabled: true,
     };
 }
+
+// ElevenLabs TTS
+if (process.env.ELEVENLABS_API_KEY) {
+    config.messages = config.messages || {};
+    config.messages.tts = {
+        auto: 'inbound',
+        provider: 'elevenlabs',
+        elevenlabs: {
+            apiKey: process.env.ELEVENLABS_API_KEY,
+            voiceId: 'pMsXgVXv3BLzUgSXRplE',
+            modelId: 'eleven_multilingual_v2',
+            voiceSettings: { stability: 0.5, similarityBoost: 0.75, style: 0.0, useSpeakerBoost: true, speed: 1.0 },
+        },
+    };
+    console.log('ElevenLabs TTS configured');
+}
+
+// Clean up keys not recognized by OpenClaw v2026.2.9 (may exist in R2 backup)
+if (config.agents && config.agents.defaults) {
+    delete config.agents.defaults.mcp;
+}
+if (config.tools && config.tools.web && config.tools.web.fetch) {
+    delete config.tools.web.fetch.readability;
+}
+
+// Tool profile: full (enable all built-in tools)
+config.tools = config.tools || {};
+config.tools.profile = 'full';
+
+// Web fetch (no API key needed)
+config.tools.web = config.tools.web || {};
+config.tools.web.fetch = { enabled: true, maxChars: 50000 };
+
+// Web search (Brave)
+if (process.env.BRAVE_API_KEY) {
+    config.tools.web.search = {
+        enabled: true,
+        provider: 'brave',
+        apiKey: process.env.BRAVE_API_KEY,
+        maxResults: 5,
+    };
+    console.log('Brave web search enabled');
+}
+
+console.log('Tools configured: profile=full, web fetch/search');
 
 fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 console.log('Configuration patched successfully');
