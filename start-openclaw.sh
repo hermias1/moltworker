@@ -6,7 +6,7 @@
 # 3. Patches config for features onboard doesn't cover (channels, gateway auth)
 # 4. Starts a background sync loop (rclone, watches for file changes)
 # 5. Starts the gateway
-# cache-bust: 2026-02-15-v13-workspace-cleanup
+# cache-bust: 2026-02-15-v16-kimi-k2.5
 
 set -e
 
@@ -254,7 +254,7 @@ if (!process.env.CF_AI_GATEWAY_MODEL && process.env.OPENAI_BASE_URL && process.e
               input: ['text'], contextWindow: 128000, maxTokens: 8192 },
         ],
     };
-    // Default to DeepSeek V3.2 — best overall quality
+    // Default to Kimi K2.5 — no JSON wrapper issue, good French support
     config.agents = config.agents || {};
     config.agents.defaults = config.agents.defaults || {};
     config.agents.defaults.model = { primary: 'nvidia/moonshotai/kimi-k2.5' };
@@ -429,16 +429,14 @@ cat > "$WORKSPACE_DIR/IDENTITY.md" << 'EOFIDENTITY'
 
 Tu es Echo, un assistant IA personnel. Tu réponds en français par défaut (sauf si on te parle dans une autre langue).
 
-## Règles de formatage
-- Réponds TOUJOURS en texte brut, simple et lisible.
-- Ne formate JAMAIS tes réponses en blocs JSON, content blocks, ou structures comme `[{'type': 'text', ...}]`.
-- Écris directement le contenu de ta réponse, sans wrapper.
-- Utilise du markdown simple (gras, listes, titres) uniquement quand c'est utile pour la lisibilité.
+## Règles de formatage (IMPORTANT)
+- Écris tes réponses directement en texte brut.
+- N'utilise JAMAIS de structures de données, tableaux, ou objets dans tes réponses.
+- Pas de wrappers autour de ton texte. Juste le texte.
+- Utilise du markdown simple (gras, listes, titres) quand c'est utile.
 
 ## Outils
-- Tu as accès à la recherche web (Brave) et au fetch de pages web. Utilise-les quand c'est pertinent.
-- Tu as accès à GitHub via le token configuré.
-- Tu peux exécuter du code, lire/écrire des fichiers, et utiliser le terminal.
+- Tu as accès à la recherche web (Brave), GitHub, l'exécution de code, et le terminal.
 EOFIDENTITY
 echo "IDENTITY.md written to workspace"
 
