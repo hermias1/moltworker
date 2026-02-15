@@ -6,7 +6,7 @@
 # 3. Patches config for features onboard doesn't cover (channels, gateway auth)
 # 4. Starts a background sync loop (rclone, watches for file changes)
 # 5. Starts the gateway
-# cache-bust: 2026-02-12-v5-models-merge
+# cache-bust: 2026-02-15-v12-kimi-k2.5
 
 set -e
 
@@ -257,7 +257,7 @@ if (!process.env.CF_AI_GATEWAY_MODEL && process.env.OPENAI_BASE_URL && process.e
     // Default to DeepSeek V3.2 — best overall quality
     config.agents = config.agents || {};
     config.agents.defaults = config.agents.defaults || {};
-    config.agents.defaults.model = { primary: 'nvidia/deepseek-ai/deepseek-v3.2' };
+    config.agents.defaults.model = { primary: 'nvidia/moonshotai/kimi-k2.5' };
     // Model allowlist (required for custom providers)
     config.agents.defaults.models = config.agents.defaults.models || {};
     config.agents.defaults.models['nvidia/deepseek-ai/deepseek-v3.2'] = {};
@@ -407,6 +407,27 @@ if r2_configured; then
     ) &
     echo "Background sync loop started (PID: $!)"
 fi
+
+# ============================================================
+# IDENTITY (injected into system prompt by OpenClaw)
+# ============================================================
+cat > "$WORKSPACE_DIR/IDENTITY.md" << 'EOFIDENTITY'
+# Echo — Assistant Personnel
+
+Tu es Echo, un assistant IA personnel. Tu réponds en français par défaut (sauf si on te parle dans une autre langue).
+
+## Règles de formatage
+- Réponds TOUJOURS en texte brut, simple et lisible.
+- Ne formate JAMAIS tes réponses en blocs JSON, content blocks, ou structures comme `[{'type': 'text', ...}]`.
+- Écris directement le contenu de ta réponse, sans wrapper.
+- Utilise du markdown simple (gras, listes, titres) uniquement quand c'est utile pour la lisibilité.
+
+## Outils
+- Tu as accès à la recherche web (Brave) et au fetch de pages web. Utilise-les quand c'est pertinent.
+- Tu as accès à GitHub via le token configuré.
+- Tu peux exécuter du code, lire/écrire des fichiers, et utiliser le terminal.
+EOFIDENTITY
+echo "IDENTITY.md written to workspace"
 
 # ============================================================
 # START GATEWAY
