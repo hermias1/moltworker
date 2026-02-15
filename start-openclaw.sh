@@ -6,7 +6,7 @@
 # 3. Patches config for features onboard doesn't cover (channels, gateway auth)
 # 4. Starts a background sync loop (rclone, watches for file changes)
 # 5. Starts the gateway
-# cache-bust: 2026-02-15-v12-kimi-k2.5
+# cache-bust: 2026-02-15-v13-workspace-cleanup
 
 set -e
 
@@ -407,6 +407,19 @@ if r2_configured; then
     ) &
     echo "Background sync loop started (PID: $!)"
 fi
+
+# ============================================================
+# WORKSPACE CLEANUP (remove R2 pollution before gateway starts)
+# ============================================================
+# R2 may restore old workspace files (SOUL.md, HEARTBEAT.md, etc.)
+# that pollute the system prompt. Remove everything except what we create.
+if [ -d "$WORKSPACE_DIR" ]; then
+    for f in "$WORKSPACE_DIR"/*.md; do
+        [ -f "$f" ] && rm -f "$f" && echo "Cleaned workspace file: $(basename "$f")"
+    done
+    rm -rf "$WORKSPACE_DIR/memory" "$WORKSPACE_DIR/projects" 2>/dev/null
+fi
+mkdir -p "$WORKSPACE_DIR"
 
 # ============================================================
 # IDENTITY (injected into system prompt by OpenClaw)
